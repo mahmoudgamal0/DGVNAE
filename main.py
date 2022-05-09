@@ -11,8 +11,8 @@ from model import GNAE_ENC, VGNAE_ENC
 
 DATASET = 'Cora'
 MODEL = 'GNAE'
-CHANNELS = 200
-EPOCHS = 100
+CHANNELS = 64
+EPOCHS = 300
 
 path = osp.join(osp.dirname(osp.realpath(__file__)), 'data', DATASET)
 dataset = Planetoid(path, DATASET, 'public')
@@ -31,13 +31,13 @@ N_F = int(data.num_features)
 
 # FIX Models
 if MODEL == 'GNAE':   
-    model = GAE(GNAE_ENC(N_F, CHANNELS, CHANNELS, 20, 4)).to(device)
+    model = GAE(GNAE_ENC(N_F, CHANNELS, CHANNELS, 8, 3)).to(device)
 else:
-    model = VGAE(VGNAE_ENC(N_F, CHANNELS, CHANNELS, 5, 3)).to(device)
+    model = VGAE(VGNAE_ENC(N_F, CHANNELS, CHANNELS, 8, 2)).to(device)
 
 data.train_mask = data.val_mask = data.test_mask = data.y = None
 x, train_pos_edge_index = data.x.to(device), data.train_pos_edge_index.to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 def train():
   model.train()

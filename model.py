@@ -1,8 +1,22 @@
 
 import torch
 import torch.nn as nn
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, APPNP
 import torch.nn.functional as F
+
+class NormalizedGCNConv(torch.nn.Module):
+	def __init__(self, in_dim, out_dim, scaling_factor = 1.8):
+		super(NormalizedGCNConv, self).__init__()
+
+		self.scaling_factor = scaling_factor
+		self.linear = nn.Linear(in_dim, out_dim)
+		self.propagate = APPNP(K=2, alpha=0.15, dropout=0.25)
+
+	def forward(self, x, edge_index):
+		x = self.linear(x)
+		x = F.normalize(x, p=2, dim=1)  * self.scaling_factor
+		x = self.propagate(x, edge_index)
+		return x
 
 class GNAE_ENC(torch.nn.Module):
 		def __init__(self, in_dim, hidden_dim, out_dim, depth=3, link_len=2):
@@ -13,11 +27,11 @@ class GNAE_ENC(torch.nn.Module):
 			assert self.depth > self.link_len, "Link length cannot be bigger than depth"
 
 			self.convs = torch.nn.ModuleList()
-			self.convs.append(GCNConv(in_dim, hidden_dim))
+			self.convs.append(NormalizedGCNConv(in_dim, hidden_dim))
 			for _ in range(1, depth):
-				self.convs.append(GCNConv(hidden_dim, hidden_dim))
+				self.convs.append(NormalizedGCNConv(hidden_dim, hidden_dim))
 			
-			self.convx = GCNConv(hidden_dim, out_dim)
+			self.convx = NormalizedGCNConv(hidden_dim, out_dim)
 		
 		def forward(self, x, edge_index):
 			out = F.relu(self.convs[0](x, edge_index))
@@ -41,12 +55,12 @@ class VGNAE_ENC(torch.nn.Module):
 			assert self.depth > self.link_len, "Link length cannot be bigger than depth"
 
 			self.convs = torch.nn.ModuleList()
-			self.convs.append(GCNConv(in_dim, hidden_dim))
+			self.convs.append(NormalizedGCNConv(in_dim, hidden_dim))
 			for _ in range(1, depth):
-				self.convs.append(GCNConv(hidden_dim, hidden_dim))
+				self.convs.append(NormalizedGCNConv(hidden_dim, hidden_dim))
 
-			self.conv_mu = GCNConv(hidden_dim, out_dim)
-			self.conv_logstd = GCNConv(hidden_dim, out_dim)
+			self.conv_mu = NormalizedGCNConv(hidden_dim, out_dim)
+			self.conv_logstd = NormalizedGCNConv(hidden_dim, out_dim)
 
 		def forward(self, x, edge_index):
 			out = F.relu(self.convs[0](x, edge_index))
