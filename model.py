@@ -5,12 +5,12 @@ from torch_geometric.nn import GCNConv, APPNP
 import torch.nn.functional as F
 
 class NormalizedGCNConv(torch.nn.Module):
-	def __init__(self, in_dim, out_dim, scaling_factor = 1.8):
+	def __init__(self, in_dim, out_dim, scaling_factor = 1.8, K = 2, alpha = 0.15):
 		super(NormalizedGCNConv, self).__init__()
 
 		self.scaling_factor = scaling_factor
 		self.linear = nn.Linear(in_dim, out_dim)
-		self.propagate = APPNP(K=2, alpha=0.15, dropout=0.25)
+		self.propagate = APPNP(K=K, alpha=alpha, dropout=0.25)
 
 	def forward(self, x, edge_index):
 		x = self.linear(x)
@@ -19,7 +19,7 @@ class NormalizedGCNConv(torch.nn.Module):
 		return x
 
 class GNAE_ENC(torch.nn.Module):
-		def __init__(self, in_dim, hidden_dim, out_dim, depth=3, link_len=2):
+		def __init__(self, in_dim, hidden_dim, out_dim, depth=3, link_len=2, K = 2, alpha = 0.15):
 			super(GNAE_ENC, self).__init__()
 
 			self.depth = depth
@@ -27,11 +27,11 @@ class GNAE_ENC(torch.nn.Module):
 			assert self.depth > self.link_len, "Link length cannot be bigger than depth"
 
 			self.convs = torch.nn.ModuleList()
-			self.convs.append(NormalizedGCNConv(in_dim, hidden_dim))
+			self.convs.append(NormalizedGCNConv(in_dim, hidden_dim, K=K, alpha=alpha))
 			for _ in range(1, depth):
-				self.convs.append(NormalizedGCNConv(hidden_dim, hidden_dim))
+				self.convs.append(NormalizedGCNConv(hidden_dim, hidden_dim, K=K, alpha=alpha))
 			
-			self.convx = NormalizedGCNConv(hidden_dim, out_dim)
+			self.convx = NormalizedGCNConv(hidden_dim, out_dim, K=K, alpha=alpha)
 		
 		def forward(self, x, edge_index):
 			out = F.relu(self.convs[0](x, edge_index))
@@ -47,7 +47,7 @@ class GNAE_ENC(torch.nn.Module):
 			return self.convx(out, edge_index)
 
 class VGNAE_ENC(torch.nn.Module):
-		def __init__(self, in_dim, hidden_dim, out_dim, depth=3, link_len=2):
+		def __init__(self, in_dim, hidden_dim, out_dim, depth=3, link_len=2, K = 2, alpha = 0.15):
 			super(VGNAE_ENC, self).__init__()
 
 			self.depth = depth
@@ -55,12 +55,12 @@ class VGNAE_ENC(torch.nn.Module):
 			assert self.depth > self.link_len, "Link length cannot be bigger than depth"
 
 			self.convs = torch.nn.ModuleList()
-			self.convs.append(NormalizedGCNConv(in_dim, hidden_dim))
+			self.convs.append(NormalizedGCNConv(in_dim, hidden_dim, K=K, alpha=alpha))
 			for _ in range(1, depth):
-				self.convs.append(NormalizedGCNConv(hidden_dim, hidden_dim))
+				self.convs.append(NormalizedGCNConv(hidden_dim, hidden_dim, K=K, alpha=alpha))
 
-			self.conv_mu = NormalizedGCNConv(hidden_dim, out_dim)
-			self.conv_logstd = NormalizedGCNConv(hidden_dim, out_dim)
+			self.conv_mu = NormalizedGCNConv(hidden_dim, out_dim, K=K, alpha=alpha)
+			self.conv_logstd = NormalizedGCNConv(hidden_dim, out_dim, K=K, alpha=alpha)
 
 		def forward(self, x, edge_index):
 			out = F.relu(self.convs[0](x, edge_index))
